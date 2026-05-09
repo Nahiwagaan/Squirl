@@ -1,50 +1,73 @@
-# Welcome to your Expo app 👋
+# Squirl
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Squirl is a personal finance and budgeting app built with Expo + React Native.
 
-## Get started
+It helps users set up their profile, track income/expenses, view cashflow and history, manage wallets, plan bills/goals, and monitor debts/owed money.
+
+## Features
+
+- Onboarding flow (`/` and `/setup`) with profile, salary, frequency, and payday reminder setup
+- Home dashboard with:
+  - 6-month cashflow chart (income vs expense)
+  - this-month income/out summary cards
+  - payday reminder card
+- Quick Add modal actions:
+  - Income
+  - Expense
+  - Transfer
+- Transaction screens:
+  - `app/income.tsx`
+  - `app/expense.tsx`
+  - `app/transfer.tsx`
+- Wallet page with net worth and account cards
+- Plan page with list/calendar view scaffold for bills/goals
+- History page with recent transactions and totals
+- Debts page (I Owe / Owed to Me)
+- Shared reusable UI:
+  - `components/dashboard-header.tsx`
+  - `components/squirl-banner.tsx`
+
+## Tech Stack
+
+- Expo SDK 54
+- React Native + Expo Router
+- TypeScript
+- SQLite (`expo-sqlite`) on native
+- localStorage fallback on web (`lib/database.ts`)
+
+## Project Structure
+
+- `app/(tabs)` - tab screens (Home, Wallet, Plan, History)
+- `app/*.tsx` - stack screens (Income, Expense, Transfer, Debts, Setup)
+- `components/` - shared UI components
+- `lib/` - data storage layer (web + native)
+- `assets/images/` - logos, mascots, and bank images
+
+## Run Locally
 
 1. Install dependencies
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. Start development server
 
-## Learn more
+```bash
+npx expo start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+3. Open on device/emulator/web from Expo CLI options.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Notes
 
-## Join the community
+- App icon/logo uses `assets/images/logo.png`.
+- The app currently uses seeded/static UI data in some sections (e.g., parts of Plan, Wallet cards) while core transaction/history flows are already connected.
 
-Join our community of developers creating universal apps.
+## Scripts
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `npm run start` - start Expo
+- `npm run android` - launch Android via Expo
+- `npm run ios` - launch iOS via Expo
+- `npm run web` - launch web
+- `npm run lint` - run lint checks
