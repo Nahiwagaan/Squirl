@@ -1,6 +1,4 @@
-# Squirl
-
-![Squirl Logo](assets/images/logo.png)
+# <img src="assets/images/logo.png" width="24"> Squirl
 
 Squirl is a personal finance and budgeting app built with Expo + React Native.
 
