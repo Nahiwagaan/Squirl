@@ -1,5 +1,7 @@
 # Squirl
 
+![Squirl Logo](assets/images/logo.png)
+
 Squirl is a personal finance and budgeting app built with Expo + React Native.
 
 It helps users set up their profile, track income/expenses, view cashflow and history, manage wallets, plan bills/goals, and monitor debts/owed money.
