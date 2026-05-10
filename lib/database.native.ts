@@ -43,6 +43,28 @@ export function initDatabase() {
       created_at TEXT NOT NULL
     );
   `);
+
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS wallet_accounts (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT NOT NULL UNIQUE,
+      currency   TEXT NOT NULL,
+      balance    REAL NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  const existingAccounts = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM wallet_accounts');
+  if ((existingAccounts?.count ?? 0) === 0) {
+    const nowIso = new Date().toISOString();
+    const defaults = ['Cash'];
+    defaults.forEach((name) => {
+      db.runSync(
+        'INSERT INTO wallet_accounts (name, currency, balance, created_at) VALUES (?, ?, ?, ?)',
+        [name, 'PHP', 0, nowIso]
+      );
+    });
+  }
 }
 
 export function saveBasicProfile(
@@ -125,6 +147,14 @@ export type HistoryTransaction = {
   name: string;
   meta: string;
   amount: number;
+  created_at: string;
+};
+
+export type WalletAccount = {
+  id: number;
+  name: string;
+  currency: string;
+  balance: number;
   created_at: string;
 };
 
@@ -245,4 +275,91 @@ export function getRecentTransactions(limit = 20): HistoryTransaction[] {
 export function hasCompletedOnboarding(): boolean {
   const user = getUserProfile();
   return !!user && !!user.name;
+}
+
+export function getAccountBalances(): Record<string, number> {
+  const incomes = db.getAllSync<{ account: string; amount: number }>('SELECT account, amount FROM income_entries');
+  const expenses = db.getAllSync<{ account: string; amount: number }>('SELECT account, amount FROM expense_entries');
+  const balances: Record<string, number> = {};
+
+  incomes.forEach((entry) => {
+    balances[entry.account] = (balances[entry.account] || 0) + entry.amount;
+  });
+
+  expenses.forEach((entry) => {
+    balances[entry.account] = (balances[entry.account] || 0) - entry.amount;
+  });
+
+  return balances;
+}
+
+export function getWalletAccounts(): WalletAccount[] {
+  const accounts = db.getAllSync<WalletAccount>('SELECT * FROM wallet_accounts ORDER BY created_at ASC');
+  const legacyDefaultsOld = ['GCash', 'MariBank', 'BPI', 'Wise', 'Cash on hand'];
+  const legacyDefaultsNew = ['GCash', 'MariBank', 'BPI', 'Wise', 'Cash'];
+  const names = accounts.map((a) => a.name).sort();
+  const oldSorted = [...legacyDefaultsOld].sort();
+  const newSorted = [...legacyDefaultsNew].sort();
+  const isLegacyDefaultSetOld = names.length === oldSorted.length && names.every((name, idx) => name === oldSorted[idx]);
+  const isLegacyDefaultSetNew = names.length === newSorted.length && names.every((name, idx) => name === newSorted[idx]);
+
+  if (isLegacyDefaultSetOld || isLegacyDefaultSetNew) {
+    db.runSync('DELETE FROM wallet_accounts');
+    db.runSync(
+      'INSERT INTO wallet_accounts (name, currency, balance, created_at) VALUES (?, ?, ?, ?)',
+      ['Cash', 'PHP', 0, new Date().toISOString()]
+    );
+    return db.getAllSync<WalletAccount>('SELECT * FROM wallet_accounts ORDER BY created_at ASC');
+  }
+
+  return accounts;
+}
+
+export function addWalletAccount(name: string, currency = 'PHP') {
+  const trimmedName = name.trim();
+  if (!trimmedName) return;
+
+  const existing = db.getFirstSync<{ id: number }>(
+    'SELECT id FROM wallet_accounts WHERE LOWER(name) = LOWER(?) LIMIT 1',
+    [trimmedName]
+  );
+  if (existing) return;
+
+  db.runSync(
+    'INSERT INTO wallet_accounts (name, currency, balance, created_at) VALUES (?, ?, ?, ?)',
+    [trimmedName, currency, 0, new Date().toISOString()]
+  );
+}
+
+export function updateWalletAccount(oldName: string, newName: string) {
+  const trimmedNewName = newName.trim();
+  if (!trimmedNewName) return;
+
+  const existing = db.getFirstSync<{ id: number }>(
+    'SELECT id FROM wallet_accounts WHERE LOWER(name) = LOWER(?) AND LOWER(name) != LOWER(?) LIMIT 1',
+    [trimmedNewName, oldName]
+  );
+  if (existing) return;
+
+  db.runSync(
+    'UPDATE wallet_accounts SET name = ? WHERE LOWER(name) = LOWER(?)',
+    [trimmedNewName, oldName]
+  );
+
+  db.runSync(
+    'UPDATE income_entries SET account = ? WHERE LOWER(account) = LOWER(?)',
+    [trimmedNewName, oldName]
+  );
+
+  db.runSync(
+    'UPDATE expense_entries SET account = ? WHERE LOWER(account) = LOWER(?)',
+    [trimmedNewName, oldName]
+  );
+}
+
+export function deleteWalletAccount(name: string) {
+  db.runSync(
+    'DELETE FROM wallet_accounts WHERE LOWER(name) = LOWER(?)',
+    [name]
+  );
 }

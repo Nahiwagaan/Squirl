@@ -14,6 +14,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
 import { initDatabase, saveSalaryProfile } from '@/lib/database';
 
@@ -63,11 +64,15 @@ export default function SetupPage() {
     if (cleanedSalary === '') {
       saveSalaryProfile(null, frequency, deductions, null);
     } else if (!Number.isNaN(amount) && amount > 0) {
+      if (!nextPayday) {
+        Alert.alert('Missing Payday', 'Please select a payday date to continue.');
+        return;
+      }
       saveSalaryProfile(
         amount,
         frequency,
         deductions,
-        nextPayday ? nextPayday.toISOString() : null
+        nextPayday.toISOString()
       );
     }
 

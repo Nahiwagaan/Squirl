@@ -1,9 +1,9 @@
-import { initDatabase, saveExpenseEntry } from '@/lib/database';
-import { Ionicons } from '@expo/vector-icons';
+import { getWalletAccounts, initDatabase, saveExpenseEntry } from '@/lib/database';
 import { Picker } from '@react-native-picker/picker';
+import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -23,20 +23,30 @@ const RED = '#C30F1A';
 const BG = '#FFFFFF';
 const TEXT_DARK = '#1A1A1A';
 const TEXT_MUTED = '#9A9A9A';
-const BORDER = '#D0D0D0';
+const BORDER = '#2E2E2E';
 
 const CATEGORIES = ['Family Expense', 'Bills', 'Fun', 'Food', 'Transport', 'Others'];
-const ACCOUNTS = ['GCash', 'MariBank', 'BPI', 'Wise', 'Cash on hand'];
-
 export default function ExpenseScreen() {
   const [fontsLoaded] = useFonts({ Inter_400Regular });
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const [isCategoryOpen, setIsCategoryOpen] = useState(true);
-  const [isAccountOpen, setIsAccountOpen] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Family Expense');
-  const [selectedAccount, setSelectedAccount] = useState('Cash on hand');
+  const [selectedAccount, setSelectedAccount] = useState('Cash');
+  const [accounts, setAccounts] = useState<string[]>(['Cash']);
   const amountInputRef = useRef<TextInput>(null);
+
+  const loadAccounts = useCallback(() => {
+    initDatabase();
+    const list = getWalletAccounts().map((a) => a.name).sort((a, b) => {
+      if (a === 'Cash') return -1;
+      if (b === 'Cash') return 1;
+      return a.localeCompare(b);
+    });
+    setAccounts(list.length ? list : ['Cash']);
+    setSelectedAccount((prev) => (list.includes(prev) ? prev : (list[0] || 'Cash')));
+  }, []);
+
+  useFocusEffect(loadAccounts);
 
   if (!fontsLoaded) return null;
   const font = 'Inter_400Regular';
@@ -112,47 +122,37 @@ export default function ExpenseScreen() {
             onChangeText={setNote}
           />
 
-          <TouchableOpacity style={styles.dropHeader} onPress={() => setIsCategoryOpen((prev) => !prev)} activeOpacity={0.8}>
-            <Text style={[styles.sectionTitle, { fontFamily: font }]}>Category</Text>
-            <Ionicons name={isCategoryOpen ? 'chevron-up' : 'chevron-down'} size={20} color={TEXT_DARK} />
-          </TouchableOpacity>
-          {isCategoryOpen && (
-            <View style={styles.pickerWrap}>
-              <Picker
-                selectedValue={selectedCategory}
-                onValueChange={(value) => {
-                  if (typeof value === 'string') setSelectedCategory(value);
-                }}
-                style={styles.picker}
-                dropdownIconColor={TEXT_MUTED}
-              >
-                {CATEGORIES.map((item) => (
-                  <Picker.Item key={item} label={item} value={item} />
-                ))}
-              </Picker>
-            </View>
-          )}
+          <Text style={[styles.sectionTitle, { fontFamily: font }]}>Category</Text>
+          <View style={styles.pickerWrap}>
+            <Picker
+              selectedValue={selectedCategory}
+              onValueChange={(value) => {
+                if (typeof value === 'string') setSelectedCategory(value);
+              }}
+              style={styles.picker}
+              dropdownIconColor={TEXT_MUTED}
+            >
+              {CATEGORIES.map((item) => (
+                <Picker.Item key={item} label={item} value={item} />
+              ))}
+            </Picker>
+          </View>
 
-          <TouchableOpacity style={styles.dropHeader} onPress={() => setIsAccountOpen((prev) => !prev)} activeOpacity={0.8}>
-            <Text style={[styles.sectionTitle, { fontFamily: font }]}>To Account</Text>
-            <Ionicons name={isAccountOpen ? 'chevron-up' : 'chevron-down'} size={20} color={TEXT_DARK} />
-          </TouchableOpacity>
-          {isAccountOpen && (
-            <View style={styles.pickerWrap}>
-              <Picker
-                selectedValue={selectedAccount}
-                onValueChange={(value) => {
-                  if (typeof value === 'string') setSelectedAccount(value);
-                }}
-                style={styles.picker}
-                dropdownIconColor={TEXT_MUTED}
-              >
-                {ACCOUNTS.map((item) => (
-                  <Picker.Item key={item} label={`${item} · PHP`} value={item} />
-                ))}
-              </Picker>
-            </View>
-          )}
+          <Text style={[styles.sectionTitle, { fontFamily: font }]}>To Account</Text>
+          <View style={styles.pickerWrap}>
+            <Picker
+              selectedValue={selectedAccount}
+              onValueChange={(value) => {
+                if (typeof value === 'string') setSelectedAccount(value);
+              }}
+              style={styles.picker}
+              dropdownIconColor={TEXT_MUTED}
+            >
+              {accounts.map((item) => (
+                <Picker.Item key={item} label={`${item} · PHP`} value={item} />
+              ))}
+            </Picker>
+          </View>
         </ScrollView>
 
         <View style={styles.footer}>
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   amountLabel: { fontSize: 12, color: TEXT_MUTED, fontWeight: '700' },
   amountRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   peso: { fontSize: 48, color: RED, fontWeight: '700' },
-  amountText: { fontSize: 56, color: '#C4C5C6', fontWeight: '700', marginLeft: 6 },
+  amountText: { fontSize: 56, color: TEXT_DARK, fontWeight: '700', marginLeft: 6 },
   amountInput: {
     marginTop: 4,
     width: '100%',
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 20, color: TEXT_DARK, fontWeight: '700', marginBottom: 8 },
   noteInput: {
     borderWidth: 1,
-    borderColor: '#2E2E2E',
+    borderColor: BORDER,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,

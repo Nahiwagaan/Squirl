@@ -4,6 +4,7 @@
 const STORAGE_KEY = 'squirl_user_profile';
 const INCOME_STORAGE_KEY = 'squirl_income_entries';
 const EXPENSE_STORAGE_KEY = 'squirl_expense_entries';
+const WALLET_ACCOUNTS_STORAGE_KEY = 'squirl_wallet_accounts';
 
 export type UserProfile = {
   id: number;
@@ -50,6 +51,18 @@ export type HistoryTransaction = {
   created_at: string;
 };
 
+export type WalletAccount = {
+  id: number;
+  name: string;
+  currency: string;
+  balance: number;
+  created_at: string;
+};
+
+const DEFAULT_WALLET_ACCOUNTS: WalletAccount[] = [
+  { id: 1, name: 'Cash', currency: 'PHP', balance: 0, created_at: new Date().toISOString() },
+];
+
 function read(): UserProfile | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -95,8 +108,39 @@ function writeExpenseEntries(entries: ExpenseEntry[]) {
   } catch {}
 }
 
+function readWalletAccounts(): WalletAccount[] {
+  try {
+    const raw = localStorage.getItem(WALLET_ACCOUNTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeWalletAccounts(accounts: WalletAccount[]) {
+  try {
+    localStorage.setItem(WALLET_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+  } catch {}
+}
+
+function normalizeDefaultWalletAccounts(accounts: WalletAccount[]): WalletAccount[] {
+  const legacyDefaultsOld = ['GCash', 'MariBank', 'BPI', 'Wise', 'Cash on hand'];
+  const legacyDefaultsNew = ['GCash', 'MariBank', 'BPI', 'Wise', 'Cash'];
+  const names = accounts.map((a) => a.name).sort();
+  const oldSorted = [...legacyDefaultsOld].sort();
+  const newSorted = [...legacyDefaultsNew].sort();
+  const isLegacyDefaultSetOld = names.length === oldSorted.length && names.every((name, idx) => name === oldSorted[idx]);
+  const isLegacyDefaultSetNew = names.length === newSorted.length && names.every((name, idx) => name === newSorted[idx]);
+
+  if (!isLegacyDefaultSetOld && !isLegacyDefaultSetNew) return accounts;
+  return [{ id: 1, name: 'Cash', currency: 'PHP', balance: 0, created_at: new Date().toISOString() }];
+}
+
 export function initDatabase() {
-  // No-op on web — localStorage needs no initialisation
+  const existing = readWalletAccounts();
+  if (!existing.length) {
+    writeWalletAccounts(DEFAULT_WALLET_ACCOUNTS);
+  }
 }
 
 export function saveBasicProfile(
@@ -269,7 +313,95 @@ export function getRecentTransactions(limit = 20): HistoryTransaction[] {
     .slice(0, limit);
 }
 
+export function getWalletAccounts(): WalletAccount[] {
+  const existing = readWalletAccounts();
+  if (!existing.length) return DEFAULT_WALLET_ACCOUNTS;
+  const normalized = normalizeDefaultWalletAccounts(existing);
+  if (normalized.length !== existing.length || normalized[0]?.name !== existing[0]?.name) {
+    writeWalletAccounts(normalized);
+  }
+  return normalized;
+}
+
+export function addWalletAccount(name: string, currency = 'PHP') {
+  const trimmedName = name.trim();
+  if (!trimmedName) return;
+
+  const accounts = getWalletAccounts();
+  const exists = accounts.some((acc) => acc.name.toLowerCase() === trimmedName.toLowerCase());
+  if (exists) return;
+
+  const nextId = accounts.length ? Math.max(...accounts.map((a) => a.id)) + 1 : 1;
+  const newAccount: WalletAccount = {
+    id: nextId,
+    name: trimmedName,
+    currency,
+    balance: 0,
+    created_at: new Date().toISOString(),
+  };
+  writeWalletAccounts([...accounts, newAccount]);
+}
+
+export function updateWalletAccount(oldName: string, newName: string) {
+  const trimmedNewName = newName.trim();
+  if (!trimmedNewName) return;
+
+  const accounts = getWalletAccounts();
+  const index = accounts.findIndex((acc) => acc.name.toLowerCase() === oldName.toLowerCase());
+  if (index === -1) return;
+
+  const exists = accounts.some((acc) => acc.name.toLowerCase() === trimmedNewName.toLowerCase() && acc.name.toLowerCase() !== oldName.toLowerCase());
+  if (exists) return;
+
+  accounts[index].name = trimmedNewName;
+  writeWalletAccounts(accounts);
+
+  const incomes = readIncomeEntries();
+  let incomesChanged = false;
+  incomes.forEach((inc) => {
+    if (inc.account.toLowerCase() === oldName.toLowerCase()) {
+      inc.account = trimmedNewName;
+      incomesChanged = true;
+    }
+  });
+  if (incomesChanged) writeIncomeEntries(incomes);
+
+  const expenses = readExpenseEntries();
+  let expensesChanged = false;
+  expenses.forEach((exp) => {
+    if (exp.account.toLowerCase() === oldName.toLowerCase()) {
+      exp.account = trimmedNewName;
+      expensesChanged = true;
+    }
+  });
+  if (expensesChanged) writeExpenseEntries(expenses);
+}
+
+export function deleteWalletAccount(name: string) {
+  const accounts = getWalletAccounts();
+  const filtered = accounts.filter((acc) => acc.name.toLowerCase() !== name.toLowerCase());
+  if (filtered.length !== accounts.length) {
+    writeWalletAccounts(filtered);
+  }
+}
+
 export function hasCompletedOnboarding(): boolean {
   const user = getUserProfile();
   return !!user && !!user.name;
+}
+
+export function getAccountBalances(): Record<string, number> {
+  const incomes = readIncomeEntries();
+  const expenses = readExpenseEntries();
+  const balances: Record<string, number> = {};
+
+  incomes.forEach((entry) => {
+    balances[entry.account] = (balances[entry.account] || 0) + entry.amount;
+  });
+
+  expenses.forEach((entry) => {
+    balances[entry.account] = (balances[entry.account] || 0) - entry.amount;
+  });
+
+  return balances;
 }

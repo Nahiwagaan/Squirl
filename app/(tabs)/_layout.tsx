@@ -1,7 +1,6 @@
 import { router, Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { View, StyleSheet, Platform, Modal, Pressable, Text, TouchableOpacity } from 'react-native';
 
 const TEAL = '#2FA084';
@@ -117,8 +116,7 @@ export default function TabLayout() {
         onRequestClose={() => setIsQuickAddOpen(false)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setIsQuickAddOpen(false)}>
-          <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFillObject} />
-          <Pressable style={styles.popupCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={styles.popupCard} onPress={() => {}}>
             <Text style={styles.popupHeader}>Quick Actions</Text>
             {quickAddOptions.map((item, index) => (
               <TouchableOpacity
@@ -171,7 +169,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: 6,
     paddingBottom: 90,
-    backgroundColor: 'rgba(20, 20, 20, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   popupCard: {
     backgroundColor: '#FBFCFB',

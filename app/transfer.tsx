@@ -1,6 +1,8 @@
+import { getWalletAccounts, initDatabase } from '@/lib/database';
+import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -19,18 +21,32 @@ const Inter_400Regular = require('../node_modules/@expo-google-fonts/inter/400Re
 const BG = '#FFFFFF';
 const TEXT_DARK = '#1A1A1A';
 const TEXT_MUTED = '#9A9A9A';
-const BORDER = '#D0D0D0';
+const BORDER = '#2E2E2E';
 const TEAL_DARK = '#1F7D69';
 const ORANGE = '#F47B28';
-
-const ACCOUNTS = ['GCash', 'MariBank', 'BPI', 'Wise', 'Cash on hand'] as const;
 
 export default function TransferScreen() {
   const [fontsLoaded] = useFonts({ Inter_400Regular });
   const [amount, setAmount] = useState('');
-  const [fromAccount, setFromAccount] = useState<(typeof ACCOUNTS)[number]>('GCash');
-  const [toAccount, setToAccount] = useState<(typeof ACCOUNTS)[number]>('MariBank');
+  const [fromAccount, setFromAccount] = useState<string>('Cash');
+  const [toAccount, setToAccount] = useState<string>('Cash');
+  const [accounts, setAccounts] = useState<string[]>(['Cash']);
   const amountInputRef = useRef<TextInput>(null);
+
+  const loadAccounts = useCallback(() => {
+    initDatabase();
+    const list = getWalletAccounts().map((a) => a.name).sort((a, b) => {
+      if (a === 'Cash') return -1;
+      if (b === 'Cash') return 1;
+      return a.localeCompare(b);
+    });
+    const safe = list.length ? list : ['Cash'];
+    setAccounts(safe);
+    setFromAccount((prev) => (safe.includes(prev) ? prev : safe[0]));
+    setToAccount((prev) => (safe.includes(prev) ? prev : safe[0]));
+  }, []);
+
+  useFocusEffect(loadAccounts);
 
   if (!fontsLoaded) return null;
   const font = 'Inter_400Regular';
@@ -54,7 +70,7 @@ export default function TransferScreen() {
     setAmount(cleaned);
   };
 
-  const getAccountChipStyle = (account: (typeof ACCOUNTS)[number]) => {
+  const getAccountChipStyle = (account: string) => {
     if (account === 'GCash') return styles.GCashChip;
     if (account === 'MariBank') return styles.MariBankChip;
     if (account === 'BPI') return styles.BPIChip;
@@ -63,7 +79,7 @@ export default function TransferScreen() {
   };
 
   const renderAccountChip = (
-    account: (typeof ACCOUNTS)[number],
+    account: string,
     selected: boolean,
     onPress: () => void
   ) => (
@@ -73,14 +89,14 @@ export default function TransferScreen() {
       activeOpacity={0.85}
       style={[styles.accountChip, getAccountChipStyle(account), selected && styles.selectedChip]}
     >
-      <Text style={[styles.accountChipText, { fontFamily: font }, account === 'Cash on hand' && styles.cashText]}>{account}</Text>
+      <Text style={[styles.accountChipText, { fontFamily: font }, account === 'Cash' && styles.cashText]}>{account}</Text>
     </TouchableOpacity>
   );
 
-  const renderPreviewChip = (account: (typeof ACCOUNTS)[number]) => (
+  const renderPreviewChip = (account: string) => (
     <View style={[styles.previewChip, getAccountChipStyle(account)]}>
-      <Text style={[styles.previewChipText, { fontFamily: font }, account === 'Cash on hand' && styles.cashText]} numberOfLines={1}>
-        {account}
+      <Text style={[styles.previewChipText, { fontFamily: font }, account === 'Cash' && styles.cashText]} numberOfLines={1}>
+        {account || 'Select'}
       </Text>
     </View>
   );
@@ -123,12 +139,12 @@ export default function TransferScreen() {
 
           <Text style={[styles.sectionTitle, { fontFamily: font }]}>From Account</Text>
           <View style={styles.accountWrap}>
-            {ACCOUNTS.map((account) => renderAccountChip(account, fromAccount === account, () => setFromAccount(account)))}
+            {accounts.map((account) => renderAccountChip(account, fromAccount === account, () => setFromAccount(account)))}
           </View>
 
           <Text style={[styles.sectionTitle, { fontFamily: font }]}>To Account</Text>
           <View style={styles.accountWrap}>
-            {ACCOUNTS.map((account) => renderAccountChip(account, toAccount === account, () => setToAccount(account)))}
+            {accounts.map((account) => renderAccountChip(account, toAccount === account, () => setToAccount(account)))}
           </View>
         </ScrollView>
 
@@ -154,7 +170,7 @@ const styles = StyleSheet.create({
   amountLabel: { fontSize: 12, color: TEXT_MUTED, fontWeight: '700' },
   amountRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   peso: { fontSize: 48, color: TEAL_DARK, fontWeight: '700' },
-  amountText: { fontSize: 56, color: '#C4C5C6', fontWeight: '700', marginLeft: 6 },
+  amountText: { fontSize: 56, color: TEXT_DARK, fontWeight: '700', marginLeft: 6 },
   amountInput: { marginTop: 4, width: '100%', fontSize: 1, color: 'transparent', textAlign: 'center', height: 18 },
   previewCard: {
     borderWidth: 1,

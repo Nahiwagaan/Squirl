@@ -67,8 +67,6 @@ export default function PlanScreen() {
           fontFamily={font}
           userName={userName}
           mascot={require('@/assets/images/squirl/Plan.png')}
-          mascotScale={1.2}
-          mascotBottomOffset={-14}
           message="Let’s plan your budget management."
         />
 

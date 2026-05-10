@@ -1,6 +1,7 @@
 import { DashboardHeader } from '@/components/dashboard-header';
 import { SquirlBanner } from '@/components/squirl-banner';
-import { CashflowMonth, getCashflowLast6Months, getTodayExpenseTotal, getTodayIncomeTotal, getUserProfile, UserProfile } from '@/lib/database';
+import { CashflowMonth, getCashflowLast6Months, getTodayExpenseTotal, getTodayIncomeTotal, getUserProfile, UserProfile, saveSalaryProfile } from '@/lib/database';
+import DateTimePicker, { DateTimePickerAndroid, DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -14,7 +15,10 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Modal,
+  Platform,
+  TextInput
 } from 'react-native';
 
 const InclusiveSans_400Regular = require('../../node_modules/@expo-google-fonts/inclusive-sans/400Regular/InclusiveSans_400Regular.ttf');
@@ -30,6 +34,12 @@ export default function HomeDashboard() {
   const [todayIncomeTotal, setTodayIncomeTotal] = useState(0);
   const [todayExpenseTotal, setTodayExpenseTotal] = useState(0);
   const [cashflowMonths, setCashflowMonths] = useState<CashflowMonth[]>([]);
+
+  const [isSalaryModalVisible, setIsSalaryModalVisible] = useState(false);
+  const [modalSalary, setModalSalary] = useState('');
+  const [modalPayday, setModalPayday] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [webDateInput, setWebDateInput] = useState('');
 
   const [fontsLoaded] = useFonts({ InclusiveSans_400Regular, Inter_400Regular });
 
@@ -56,6 +66,76 @@ export default function HomeDashboard() {
 
   if (!fontsLoaded) return null;
   const font = 'InclusiveSans_400Regular';
+
+  const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (event.type === 'set' && selectedDate) {
+      setModalPayday(selectedDate);
+      const yyyy = selectedDate.getFullYear();
+      const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(selectedDate.getDate()).padStart(2, '0');
+      setWebDateInput(`${yyyy}-${mm}-${dd}`);
+    }
+  };
+
+  const openDatePicker = () => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: modalPayday ?? new Date(),
+        mode: 'date',
+        minimumDate: new Date(),
+        onChange: onDateChange,
+      });
+      return;
+    }
+    setShowDatePicker((prev) => !prev);
+  };
+
+  const handleWebDateChange = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 2) formatted = `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    if (digits.length > 4) formatted = `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+    setWebDateInput(formatted);
+
+    const parts = formatted.split('-');
+    if (parts.length !== 3 || parts[2].length !== 4) return;
+
+    const month = Number(parts[0]);
+    const day = Number(parts[1]);
+    const year = Number(parts[2]);
+    if (!month || !day || !year) return;
+
+    const parsed = new Date(year, month - 1, day);
+    if (!Number.isNaN(parsed.getTime())) {
+      setModalPayday(parsed);
+    }
+  };
+
+  const handleSaveSalary = () => {
+    const cleanedSalary = modalSalary.replace(/,/g, '').trim();
+    const amount = parseFloat(cleanedSalary);
+
+    if (!Number.isNaN(amount) && amount > 0) {
+      const freq = profile?.pay_frequency || 'Monthly';
+      let deds: string[] = [];
+      try {
+        if (profile?.deductions) deds = JSON.parse(profile.deductions);
+      } catch {}
+      
+      saveSalaryProfile(
+        amount,
+        freq,
+        deds,
+        modalPayday ? modalPayday.toISOString() : null
+      );
+    } else {
+      const freq = profile?.pay_frequency || 'Monthly';
+      saveSalaryProfile(null, freq, [], null);
+    }
+    setIsSalaryModalVisible(false);
+    setProfile(getUserProfile());
+  };
 
   const userName = profile?.name || 'USER';
   const salaryAmount = profile?.gross_salary ?? null;
@@ -214,7 +294,7 @@ export default function HomeDashboard() {
             </LinearGradient>
           </TouchableOpacity>
         ) : typeof salaryAmount === 'number' && salaryAmount > 0 ? (
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#D9D9D9' }]} activeOpacity={0.8}>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#D9D9D9' }]} activeOpacity={0.8} onPress={() => setIsSalaryModalVisible(true)}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.actionSubtitle, { fontFamily: font, color: '#555' }]}>Payday reminder</Text>
               <Text style={[styles.actionTitle, { fontFamily: font, color: TEXT_DARK }]}>Set your payday date in Setup</Text>
@@ -222,7 +302,7 @@ export default function HomeDashboard() {
             <Text style={[styles.actionArrow, { color: '#555', fontFamily: font }]}>&gt;</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#D9D9D9' }]} activeOpacity={0.8}>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#D9D9D9' }]} activeOpacity={0.8} onPress={() => setIsSalaryModalVisible(true)}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.actionSubtitle, { fontFamily: font, color: '#555' }]}>Are you employed?</Text>
               <Text style={[styles.actionTitle, { fontFamily: font, color: TEXT_DARK }]}>Track your salaries monthly</Text>
@@ -267,6 +347,79 @@ export default function HomeDashboard() {
         </View>
 
       </ScrollView>
+
+      <Modal visible={isSalaryModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { fontFamily: font }]}>Salary Setup</Text>
+
+            <Text style={[styles.modalLabel, { fontFamily: font }]}>MONTHLY GROSS SALARY</Text>
+            <View style={styles.salaryInputWrapper}>
+              <Text style={[styles.pesoSign, { fontFamily: font }]}>₱</Text>
+              <TextInput
+                style={[styles.salaryInput, { fontFamily: font }]}
+                placeholder="e.g. 35,000"
+                placeholderTextColor="#888888"
+                value={modalSalary}
+                onChangeText={setModalSalary}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <Text style={[styles.modalLabel, { fontFamily: font }]}>PAYDAY DATE</Text>
+            {Platform.OS === 'web' ? (
+              <View style={[styles.datePickerWrap, { paddingVertical: 0 }]}>
+                <View style={styles.webDateRow}>
+                  <TextInput
+                    style={[styles.salaryInput, { fontFamily: font }]}
+                    placeholder="MM-DD-YYYY"
+                    placeholderTextColor="#888888"
+                    value={webDateInput}
+                    onChangeText={handleWebDateChange}
+                    autoCapitalize="none"
+                    keyboardType="number-pad"
+                  />
+                  <Ionicons name="calendar-outline" size={18} color="#888888" />
+                </View>
+              </View>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={openDatePicker}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.dateButtonText, { fontFamily: font }, !modalPayday && styles.datePlaceholder]}>
+                    {modalPayday ? modalPayday.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Select payday date'}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={18} color="#888888" />
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <View style={styles.datePickerWrap}>
+                    <DateTimePicker
+                      value={modalPayday ?? new Date()}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                      minimumDate={new Date()}
+                      onChange={onDateChange}
+                    />
+                  </View>
+                )}
+              </>
+            )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setIsSalaryModalVisible(false)}>
+                <Text style={[styles.modalBtnTextCancel, { fontFamily: font }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalBtnSave} onPress={handleSaveSalary}>
+                <Text style={[styles.modalBtnTextSave, { fontFamily: font }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -281,7 +434,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 30,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   /* Header */
   header: {
@@ -620,5 +773,109 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  /* Modal Styles */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: TEXT_DARK,
+    marginBottom: 4,
+  },
+  modalLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: TEXT_DARK,
+    letterSpacing: 1.1,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  salaryInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  pesoSign: {
+    fontSize: 16,
+    color: '#888888',
+    marginRight: 6,
+  },
+  salaryInput: {
+    flex: 1,
+    fontSize: 15,
+    color: TEXT_DARK,
+    padding: 0,
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateButtonText: {
+    fontSize: 15,
+    color: TEXT_DARK,
+  },
+  datePlaceholder: {
+    color: '#888888',
+  },
+  datePickerWrap: {
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    marginTop: 8,
+  },
+  webDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 32,
+  },
+  modalBtnCancel: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  modalBtnTextCancel: {
+    color: '#888888',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalBtnSave: {
+    backgroundColor: TEAL_DARK,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  modalBtnTextSave: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
