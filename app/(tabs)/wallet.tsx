@@ -6,6 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
+import { useTheme } from '@/context/ThemeContext';
 import {
   SafeAreaView,
   ScrollView,
@@ -66,6 +67,8 @@ const ALL_BANK_OPTIONS: WalletCard[] = [
 ];
 
 export default function WalletScreen() {
+  const { colors } = useTheme();
+  const scrollRef = React.useRef<ScrollView>(null);
   const [fontsLoaded] = useFonts({ Inter_400Regular });
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [balances, setBalances] = React.useState<Record<string, number>>({});
@@ -103,7 +106,12 @@ export default function WalletScreen() {
   }, []);
 
   React.useEffect(() => { loadData(); }, [loadData]);
-  useFocusEffect(loadData);
+  useFocusEffect(
+    React.useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      loadData();
+    }, [loadData])
+  );
 
   if (!fontsLoaded) return null;
   const font = 'Inter_400Regular';
@@ -179,9 +187,9 @@ export default function WalletScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
+      <StatusBar barStyle={colors.statusBar} backgroundColor={colors.bg} />
+      <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <DashboardHeader userName={userName} fontFamily={font} />
         <SquirlBanner
           compact
@@ -192,15 +200,15 @@ export default function WalletScreen() {
         />
 
         <View style={styles.accountsHead}>
-          <Text style={[styles.accountsTitle, { fontFamily: font }]}>Wallet</Text>
-          <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
-            <Ionicons name="add" size={14} color="#155B3A" />
-            <Text style={[styles.addButtonText, { fontFamily: font }]}> Add Account</Text>
+          <Text style={[styles.accountsTitle, { fontFamily: font, color: colors.textPrimary }]}>Wallet</Text>
+          <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.tealLight }]} onPress={() => setShowAddModal(true)}>
+            <Ionicons name="add" size={14} color={colors.teal} />
+            <Text style={[styles.addButtonText, { fontFamily: font, color: colors.teal }]}> Add Account</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.topCardsRow}>
-          <View style={styles.totalBalanceCardSingle}>
+          <View style={[styles.totalBalanceCardSingle, { backgroundColor: colors.teal }]}>
             <Text style={[styles.topCardLabel, { fontFamily: font }]}>Net Worth</Text>
             <Text style={[styles.topCardValue, { fontFamily: font }]}>{formattedTotal}</Text>
             <Text style={[styles.topCardSub, { fontFamily: font }]}>{addedAccounts.length} Account{addedAccounts.length !== 1 ? 's' : ''}</Text>
@@ -209,8 +217,8 @@ export default function WalletScreen() {
 
         <View style={styles.sectionWrap}>
           <View style={styles.sectionHead}>
-            <Text style={[styles.sectionTitle, { fontFamily: font }]}>Accounts</Text>
-            <Text style={[styles.sectionTotal, { fontFamily: font }]}>{formattedTotal}</Text>
+            <Text style={[styles.sectionTitle, { fontFamily: font, color: colors.textMuted }]}>Accounts</Text>
+            <Text style={[styles.sectionTotal, { fontFamily: font, color: colors.textMuted }]}>{formattedTotal}</Text>
           </View>
           <View style={styles.grid}>
             {addedAccounts.map((item, index) => {
@@ -263,9 +271,9 @@ export default function WalletScreen() {
 
       {/* Edit Account Modal */}
       <Modal visible={showEditModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.sheetHandle} />
+        <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
+            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
 
             <View style={styles.sheetHeader}>
               <View style={{ flex: 1, marginRight: 12 }}>
@@ -274,31 +282,31 @@ export default function WalletScreen() {
                     <View style={{ width: 36, height: 36, borderRadius: 10, overflow: 'hidden' }}>
                       <Image source={selectedAccount.image} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                     </View>
-                    <Text style={[styles.sheetTitle, { fontFamily: font }]}>{selectedAccount?.name}</Text>
+                    <Text style={[styles.sheetTitle, { fontFamily: font, color: colors.textPrimary }]}>{selectedAccount?.name}</Text>
                   </View>
                 ) : (
-                  <Text style={[styles.sheetTitle, { fontFamily: font }]}>{selectedAccount?.name}</Text>
+                  <Text style={[styles.sheetTitle, { fontFamily: font, color: colors.textPrimary }]}>{selectedAccount?.name}</Text>
                 )}
-                <Text style={[styles.sheetSubtitle, { fontFamily: font }]}>{selectedAccount?.subtitle}</Text>
+                <Text style={[styles.sheetSubtitle, { fontFamily: font, color: colors.textMuted }]}>{selectedAccount?.subtitle}</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowEditModal(false)} style={styles.closeBtn}>
-                <Ionicons name="close" size={20} color={TEXT_DARK} />
+              <TouchableOpacity onPress={() => setShowEditModal(false)} style={[styles.closeBtn, { backgroundColor: colors.bgSecondary }]}>
+                <Ionicons name="close" size={20} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
             {selectedAccount && selectedAccount.name !== 'Cash' && !ALL_BANK_OPTIONS.some(b => b.name === selectedAccount.name) && (
               <>
-                <Text style={[styles.editLabel, { fontFamily: font }]}>ACCOUNT NICKNAME</Text>
+                <Text style={[styles.editLabel, { fontFamily: font, color: colors.textPrimary }]}>ACCOUNT NICKNAME</Text>
                 <TextInput
-                  style={[styles.editInput, { fontFamily: font }]}
+                  style={[styles.editInput, { fontFamily: font, color: colors.textPrimary, borderColor: colors.inputBorder }]}
                   value={editName}
                   onChangeText={setEditName}
                   placeholder="Enter account name"
-                  placeholderTextColor="#AAAAAA"
+                  placeholderTextColor={colors.textMuted}
                   autoFocus
                 />
 
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSaveEdit} activeOpacity={0.85}>
+                <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.tealBg }]} onPress={handleSaveEdit} activeOpacity={0.85}>
                   <Text style={[styles.saveBtnText, { fontFamily: font }]}>Save Changes</Text>
                 </TouchableOpacity>
               </>
@@ -316,35 +324,35 @@ export default function WalletScreen() {
 
       {/* Add Account Modal */}
       <Modal visible={showAddModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
             {/* Handle bar */}
-            <View style={styles.sheetHandle} />
+            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
 
             {isAddingCustom ? (
               <>
                 <View style={styles.sheetHeader}>
                   <View>
-                    <Text style={[styles.sheetTitle, { fontFamily: font }]}>Add Custom Account</Text>
-                    <Text style={[styles.sheetSubtitle, { fontFamily: font }]}>Enter the name of your account</Text>
+                    <Text style={[styles.sheetTitle, { fontFamily: font, color: colors.textPrimary }]}>Add Custom Account</Text>
+                    <Text style={[styles.sheetSubtitle, { fontFamily: font, color: colors.textMuted }]}>Enter the name of your account</Text>
                   </View>
-                  <TouchableOpacity onPress={closeAddModal} style={styles.closeBtn}>
-                    <Ionicons name="close" size={20} color={TEXT_DARK} />
+                  <TouchableOpacity onPress={closeAddModal} style={[styles.closeBtn, { backgroundColor: colors.bgSecondary }]}>
+                    <Ionicons name="close" size={20} color={colors.textPrimary} />
                   </TouchableOpacity>
                 </View>
 
-                <Text style={[styles.editLabel, { fontFamily: font }]}>ACCOUNT NAME</Text>
+                <Text style={[styles.editLabel, { fontFamily: font, color: colors.textPrimary }]}>ACCOUNT NAME</Text>
                 <TextInput
-                  style={[styles.editInput, { fontFamily: font }]}
+                  style={[styles.editInput, { fontFamily: font, color: colors.textPrimary, borderColor: colors.inputBorder }]}
                   value={customAccountName}
                   onChangeText={setCustomAccountName}
                   placeholder="e.g. My Savings"
-                  placeholderTextColor="#AAAAAA"
+                  placeholderTextColor={colors.textMuted}
                   autoFocus
                 />
 
                 <TouchableOpacity 
-                  style={[styles.saveBtn, { marginBottom: 10 }]} 
+                  style={[styles.saveBtn, { marginBottom: 10, backgroundColor: colors.tealBg }]} 
                   onPress={() => {
                     if (customAccountName.trim()) {
                       handleAddAccount(customAccountName);
@@ -356,18 +364,18 @@ export default function WalletScreen() {
                 </TouchableOpacity>
                 
                 <TouchableOpacity style={styles.deleteBtn} onPress={() => setIsAddingCustom(false)} activeOpacity={0.85}>
-                  <Text style={[styles.deleteBtnText, { fontFamily: font, color: '#888' }]}>Back to List</Text>
+                  <Text style={[styles.deleteBtnText, { fontFamily: font, color: colors.textMuted }]}>Back to List</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
                 <View style={styles.sheetHeader}>
                   <View>
-                    <Text style={[styles.sheetTitle, { fontFamily: font }]}>Add Account</Text>
-                    <Text style={[styles.sheetSubtitle, { fontFamily: font }]}>Choose a bank or e-wallet to add</Text>
+                    <Text style={[styles.sheetTitle, { fontFamily: font, color: colors.textPrimary }]}>Add Account</Text>
+                    <Text style={[styles.sheetSubtitle, { fontFamily: font, color: colors.textMuted }]}>Choose a bank or e-wallet to add</Text>
                   </View>
-                  <TouchableOpacity onPress={closeAddModal} style={styles.closeBtn}>
-                    <Ionicons name="close" size={20} color={TEXT_DARK} />
+                  <TouchableOpacity onPress={closeAddModal} style={[styles.closeBtn, { backgroundColor: colors.bgSecondary }]}>
+                    <Ionicons name="close" size={20} color={colors.textPrimary} />
                   </TouchableOpacity>
                 </View>
 
@@ -378,14 +386,14 @@ export default function WalletScreen() {
                   contentContainerStyle={{ paddingBottom: 20 }}
                   ListHeaderComponent={() => (
                     <TouchableOpacity style={styles.bankRow} onPress={() => setIsAddingCustom(true)} activeOpacity={0.7}>
-                      <View style={[styles.bankLogoWrap, { backgroundColor: '#F0F0F0' }]}>
-                        <Ionicons name="add" size={24} color={TEXT_DARK} />
+                      <View style={[styles.bankLogoWrap, { backgroundColor: colors.bgSecondary }]}>
+                        <Ionicons name="add" size={24} color={colors.textPrimary} />
                       </View>
                       <View style={{ flex: 1, marginLeft: 14 }}>
-                        <Text style={[styles.bankName, { fontFamily: font }]}>Add Custom Account</Text>
-                        <Text style={[styles.bankSub, { fontFamily: font }]}>Create your own account</Text>
+                        <Text style={[styles.bankName, { fontFamily: font, color: colors.textPrimary }]}>Add Custom Account</Text>
+                        <Text style={[styles.bankSub, { fontFamily: font, color: colors.textMuted }]}>Create your own account</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={20} color="#CCC" />
+                      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
                     </TouchableOpacity>
                   )}
                   renderItem={({ item }) => (
@@ -403,13 +411,13 @@ export default function WalletScreen() {
                         )}
                       </LinearGradient>
                       <View style={{ flex: 1, marginLeft: 14 }}>
-                        <Text style={[styles.bankName, { fontFamily: font }]}>{item.name}</Text>
-                        <Text style={[styles.bankSub, { fontFamily: font }]}>{item.subtitle}</Text>
+                        <Text style={[styles.bankName, { fontFamily: font, color: colors.textPrimary }]}>{item.name}</Text>
+                        <Text style={[styles.bankSub, { fontFamily: font, color: colors.textMuted }]}>{item.subtitle}</Text>
                       </View>
-                      <Ionicons name="add-circle-outline" size={22} color={TEAL} />
+                      <Ionicons name="add-circle-outline" size={22} color={colors.teal} />
                     </TouchableOpacity>
                   )}
-                  ItemSeparatorComponent={() => <View style={styles.separator} />}
+                  ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: colors.border }]} />}
                 />
               </>
             )}

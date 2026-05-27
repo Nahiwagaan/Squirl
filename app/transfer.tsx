@@ -1,4 +1,5 @@
-import { getWalletAccounts, initDatabase } from '@/lib/database';
+import { getWalletAccounts, initDatabase, saveExpenseEntry, saveIncomeEntry } from '@/lib/database';
+import { setPendingToast } from '@/lib/toast';
 import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
@@ -15,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 const Inter_400Regular = require('../node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf');
 
@@ -26,11 +28,13 @@ const TEAL_DARK = '#1F7D69';
 const ORANGE = '#F47B28';
 
 export default function TransferScreen() {
+  const { colors, isDark } = useTheme();
   const [fontsLoaded] = useFonts({ Inter_400Regular });
   const [amount, setAmount] = useState('');
   const [fromAccount, setFromAccount] = useState<string>('Cash');
   const [toAccount, setToAccount] = useState<string>('Cash');
   const [accounts, setAccounts] = useState<string[]>(['Cash']);
+  const scrollRef = useRef<ScrollView>(null);
   const amountInputRef = useRef<TextInput>(null);
 
   const loadAccounts = useCallback(() => {
@@ -46,7 +50,36 @@ export default function TransferScreen() {
     setToAccount((prev) => (safe.includes(prev) ? prev : safe[0]));
   }, []);
 
-  useFocusEffect(loadAccounts);
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      loadAccounts();
+    }, [loadAccounts])
+  );
+
+  const handleTransfer = () => {
+    const numericAmount = Number(amount.replace(/,/g, ''));
+    if (!numericAmount || Number.isNaN(numericAmount) || numericAmount <= 0) return;
+    if (fromAccount === toAccount) {
+      alert('Source and destination accounts must be different.');
+      return;
+    }
+
+    initDatabase();
+    // Double entry log for transfer:
+    // 1. Expense from source account
+    saveExpenseEntry(numericAmount, `Transfer to ${toAccount}`, 'Transfer', fromAccount);
+    // 2. Income into target account
+    saveIncomeEntry(numericAmount, `Transfer from ${fromAccount}`, 'Transfer', toAccount);
+
+    setPendingToast(JSON.stringify({
+      type: 'Transfer',
+      amount: `₱${numericAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      from: fromAccount,
+      to: toAccount
+    }));
+    router.back();
+  };
 
   if (!fontsLoaded) return null;
   const font = 'Inter_400Regular';
@@ -102,23 +135,23 @@ export default function TransferScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
+      <StatusBar barStyle={colors.statusBar} backgroundColor={colors.bg} />
       <KeyboardAvoidingView style={styles.keyboardWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8}>
               <Text style={[styles.cancelText, { fontFamily: font }]}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { fontFamily: font }]}>Transfer</Text>
+            <Text style={[styles.headerTitle, { fontFamily: font, color: colors.textPrimary }]}>Transfer</Text>
             <View style={{ width: 56 }} />
           </View>
 
-          <TouchableOpacity style={styles.amountCard} activeOpacity={0.95} onPress={() => amountInputRef.current?.focus()}>
-            <Text style={[styles.amountLabel, { fontFamily: font }]}>AMOUNT</Text>
+          <TouchableOpacity style={[styles.amountCard, { borderColor: colors.border }]} activeOpacity={0.95} onPress={() => amountInputRef.current?.focus()}>
+            <Text style={[styles.amountLabel, { fontFamily: font, color: colors.textMuted }]}>AMOUNT</Text>
             <View style={styles.amountRow}>
-              <Text style={[styles.peso, { fontFamily: font }]}>₱</Text>
-              <Text style={[styles.amountText, { fontFamily: font }]}>{formattedAmount}</Text>
+              <Text style={[styles.peso, { fontFamily: font, color: colors.tealDark }]}>₱</Text>
+              <Text style={[styles.amountText, { fontFamily: font, color: colors.textPrimary }]}>{formattedAmount}</Text>
             </View>
             <TextInput
               ref={amountInputRef}
@@ -131,25 +164,25 @@ export default function TransferScreen() {
             />
           </TouchableOpacity>
 
-          <View style={styles.previewCard}>
+          <View style={[styles.previewCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
             {renderPreviewChip(fromAccount)}
-            <Text style={[styles.arrow, { fontFamily: font }]}>→</Text>
+            <Text style={[styles.arrow, { fontFamily: font, color: colors.textPrimary }]}>→</Text>
             {renderPreviewChip(toAccount)}
           </View>
 
-          <Text style={[styles.sectionTitle, { fontFamily: font }]}>From Account</Text>
+          <Text style={[styles.sectionTitle, { fontFamily: font, color: colors.textPrimary }]}>From Account</Text>
           <View style={styles.accountWrap}>
             {accounts.map((account) => renderAccountChip(account, fromAccount === account, () => setFromAccount(account)))}
           </View>
 
-          <Text style={[styles.sectionTitle, { fontFamily: font }]}>To Account</Text>
+          <Text style={[styles.sectionTitle, { fontFamily: font, color: colors.textPrimary }]}>To Account</Text>
           <View style={styles.accountWrap}>
             {accounts.map((account) => renderAccountChip(account, toAccount === account, () => setToAccount(account)))}
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.saveButton} activeOpacity={0.85}>
+        <View style={[styles.footer, { backgroundColor: colors.bg, borderTopColor: colors.border }]}>
+          <TouchableOpacity style={styles.saveButton} activeOpacity={0.85} onPress={handleTransfer}>
             <Text style={[styles.saveText, { fontFamily: font }]}>Transfer</Text>
           </TouchableOpacity>
         </View>
@@ -159,7 +192,11 @@ export default function TransferScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: BG },
+  safeArea: {
+    flex: 1,
+    backgroundColor: BG,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
+  },
   keyboardWrap: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 120 },

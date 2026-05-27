@@ -1,8 +1,10 @@
+import { IncomeEntry, getRecentIncomeEntries, getWalletAccounts, initDatabase, saveIncomeEntry } from '@/lib/database';
+import { setPendingToast } from '@/lib/toast';
+import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
-import { getWalletAccounts, initDatabase, saveIncomeEntry } from '@/lib/database';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -16,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 const Inter_400Regular = require('../node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf');
 
@@ -25,14 +28,26 @@ const TEXT_DARK = '#1A1A1A';
 const TEXT_MUTED = '#9A9A9A';
 const BORDER = '#2E2E2E';
 
-const CATEGORIES = ['Salary', 'Freelance', 'Business', 'Gift', 'Investment', 'Allowance', 'Refund', 'Others'];
+const CATEGORIES = [
+  { name: 'Salary', icon: 'briefcase' },
+  { name: 'Freelance', icon: 'laptop' },
+  { name: 'Business', icon: 'business' },
+  { name: 'Gift', icon: 'gift' },
+  { name: 'Investment', icon: 'trending-up' },
+  { name: 'Allowance', icon: 'wallet' },
+  { name: 'Refund', icon: 'arrow-undo' },
+  { name: 'Others', icon: 'ellipsis-horizontal' },
+] as const;
 export default function IncomeScreen() {
+  const { colors, isDark } = useTheme();
   const [fontsLoaded] = useFonts({ Inter_400Regular });
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Salary');
   const [selectedAccount, setSelectedAccount] = useState('Cash');
   const [accounts, setAccounts] = useState<string[]>(['Cash']);
+  const [recentLogs, setRecentLogs] = useState<IncomeEntry[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
   const amountInputRef = useRef<TextInput>(null);
 
   const loadAccounts = useCallback(() => {
@@ -44,9 +59,15 @@ export default function IncomeScreen() {
     });
     setAccounts(list.length ? list : ['Cash']);
     setSelectedAccount((prev) => (list.includes(prev) ? prev : (list[0] || 'Cash')));
+    setRecentLogs(getRecentIncomeEntries(8));
   }, []);
 
-  useFocusEffect(loadAccounts);
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      loadAccounts();
+    }, [loadAccounts])
+  );
 
   if (!fontsLoaded) return null;
   const font = 'Inter_400Regular';
@@ -84,105 +105,141 @@ export default function IncomeScreen() {
 
     initDatabase();
     saveIncomeEntry(numericAmount, note.trim(), selectedCategory, selectedAccount);
-    router.replace('/(tabs)');
+    setPendingToast(JSON.stringify({
+      type: 'Income',
+      amount: `₱${numericAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      account: selectedAccount
+    }));
+    router.back();
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
+      <StatusBar barStyle={colors.statusBar} backgroundColor={colors.bg} />
       <KeyboardAvoidingView
         style={styles.keyboardWrap}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8}>
-            <Text style={[styles.cancelText, { fontFamily: font }]}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { fontFamily: font }]}>New Income</Text>
-          <View style={{ width: 56 }} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.amountCard}
-          activeOpacity={0.95}
-          onPress={() => amountInputRef.current?.focus()}
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={[styles.amountLabel, { fontFamily: font }]}>AMOUNT</Text>
-          <View style={styles.amountRow}>
-            <Text style={[styles.peso, { fontFamily: font }]}>₱</Text>
-            <Text style={[styles.amountText, { fontFamily: font }]}>{formattedAmount}</Text>
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8}>
+              <Text style={[styles.cancelText, { fontFamily: font }]}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { fontFamily: font, color: colors.textPrimary }]}>New Income</Text>
+            <View style={{ width: 56 }} />
           </View>
+
+          <TouchableOpacity
+            style={[styles.amountCard, { borderColor: colors.border }]}
+            activeOpacity={0.95}
+            onPress={() => amountInputRef.current?.focus()}
+          >
+            <Text style={[styles.amountLabel, { fontFamily: font, color: colors.textMuted }]}>AMOUNT</Text>
+            <View style={styles.amountRow}>
+              <Text style={[styles.peso, { fontFamily: font, color: colors.teal }]}>₱</Text>
+              <Text style={[styles.amountText, { fontFamily: font, color: colors.textPrimary }]}>{formattedAmount}</Text>
+            </View>
+            <TextInput
+              ref={amountInputRef}
+              style={[styles.amountInput, { fontFamily: font }]}
+              value={amount}
+              onChangeText={handleAmountChange}
+              keyboardType="decimal-pad"
+              placeholder="0.00"
+              placeholderTextColor="transparent"
+            />
+          </TouchableOpacity>
+
+          <Text style={[styles.sectionTitle, { fontFamily: font, color: colors.textPrimary }]}>Note (optional)</Text>
           <TextInput
-            ref={amountInputRef}
-            style={[styles.amountInput, { fontFamily: font }]}
-            value={amount}
-            onChangeText={handleAmountChange}
-            keyboardType="decimal-pad"
-            placeholder="0.00"
-            placeholderTextColor="transparent"
+            style={[styles.noteInput, { fontFamily: font, color: colors.textPrimary, borderColor: colors.border }]}
+            placeholder="e.g. April salary, freelance project..."
+            placeholderTextColor={colors.textMuted}
+            value={note}
+            onChangeText={setNote}
           />
-        </TouchableOpacity>
 
-        <Text style={[styles.sectionTitle, { fontFamily: font }]}>Note (optional)</Text>
-        <TextInput
-          style={[styles.noteInput, { fontFamily: font }]}
-          placeholder="e.g. April salary, freelance project..."
-          placeholderTextColor={TEXT_MUTED}
-          value={note}
-          onChangeText={setNote}
-        />
+          <Text style={[styles.sectionTitle, { fontFamily: font, color: colors.textPrimary }]}>Category</Text>
+          <View style={styles.pillContainer}>
+            {CATEGORIES.map((cat) => {
+              const isActive = selectedCategory === cat.name;
+              return (
+                <TouchableOpacity
+                  key={cat.name}
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedCategory(cat.name)}
+                  style={[styles.pill, { backgroundColor: isDark ? '#2C2C2E' : '#E5E7E5' }, isActive && { backgroundColor: colors.teal }]}
+                >
+                  <Ionicons name={cat.icon as any} size={16} color={isActive ? '#FFFFFF' : colors.textPrimary} />
+                  <Text style={[styles.pillText, { fontFamily: font, color: colors.textPrimary }, isActive && styles.pillTextActive]}>{cat.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-        <Text style={[styles.sectionTitle, { fontFamily: font }]}>Category</Text>
-        <View style={styles.pickerWrap}>
-          <Picker
-            selectedValue={selectedCategory}
-            onValueChange={(value) => {
-              if (typeof value === 'string') setSelectedCategory(value);
-            }}
-            style={styles.picker}
-            dropdownIconColor={TEXT_MUTED}
-          >
-            {CATEGORIES.map((item) => (
-              <Picker.Item key={item} label={item} value={item} />
-            ))}
-          </Picker>
+          {recentLogs.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { fontFamily: font, color: colors.textPrimary }]}>Recent Incomes</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                {recentLogs.map((log) => (
+                  <TouchableOpacity
+                    key={log.id}
+                    style={[styles.recentLogCard, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setAmount(log.amount.toString());
+                      setNote(log.note);
+                      setSelectedCategory(log.category);
+                      if (accounts.includes(log.account)) setSelectedAccount(log.account);
+                    }}
+                  >
+                    <Text style={[styles.recentLogTitle, { fontFamily: font, color: colors.textMuted }]} numberOfLines={1}>{log.note || log.category}</Text>
+                    <Text style={[styles.recentLogAmount, { fontFamily: font, color: colors.textPrimary }]}>₱{log.amount.toLocaleString('en-PH')}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
+
+          <Text style={[styles.sectionTitle, { fontFamily: font, color: colors.textPrimary }]}>To Account</Text>
+          <View style={[styles.pickerWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <Picker
+              selectedValue={selectedAccount}
+              onValueChange={(value) => {
+                if (typeof value === 'string') setSelectedAccount(value);
+              }}
+              style={[styles.picker, { color: colors.textPrimary }]}
+              dropdownIconColor={colors.textMuted}
+            >
+              {accounts.map((item) => (
+                <Picker.Item key={item} label={`${item} · PHP`} value={item} />
+              ))}
+            </Picker>
+          </View>
+        </ScrollView>
+
+        <View style={[styles.footer, { backgroundColor: colors.bg, borderTopColor: colors.border }]}>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.teal }]} activeOpacity={0.85} onPress={handleSaveIncome}>
+            <Text style={[styles.saveText, { fontFamily: font }]}>Save Income</Text>
+          </TouchableOpacity>
         </View>
-
-        <Text style={[styles.sectionTitle, { fontFamily: font }]}>To Account</Text>
-        <View style={styles.pickerWrap}>
-          <Picker
-            selectedValue={selectedAccount}
-            onValueChange={(value) => {
-              if (typeof value === 'string') setSelectedAccount(value);
-            }}
-            style={styles.picker}
-            dropdownIconColor={TEXT_MUTED}
-          >
-            {accounts.map((item) => (
-              <Picker.Item key={item} label={`${item} · PHP`} value={item} />
-            ))}
-          </Picker>
-        </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.saveButton} activeOpacity={0.85} onPress={handleSaveIncome}>
-          <Text style={[styles.saveText, { fontFamily: font }]}>Save Income</Text>
-        </TouchableOpacity>
-      </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: BG },
+  safeArea: {
+    flex: 1,
+    backgroundColor: BG,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
+  },
   keyboardWrap: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 120 },
@@ -271,4 +328,51 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   saveText: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  pillContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E5E7E5',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    gap: 6,
+  },
+  pillActiveIncome: {
+    backgroundColor: TEAL,
+  },
+  pillText: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    fontWeight: '500',
+  },
+  pillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  recentLogCard: {
+    backgroundColor: '#F6F7F7',
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 14,
+    padding: 12,
+    marginRight: 10,
+    minWidth: 120,
+    maxWidth: 180,
+  },
+  recentLogTitle: {
+    fontSize: 14,
+    color: TEXT_MUTED,
+    marginBottom: 4,
+  },
+  recentLogAmount: {
+    fontSize: 16,
+    color: TEXT_DARK,
+    fontWeight: '700',
+  },
 });

@@ -1,10 +1,11 @@
 import { DashboardHeader } from '@/components/dashboard-header';
 import { SquirlBanner } from '@/components/squirl-banner';
-import { getRecentTransactions, getTodayExpenseTotal, getTodayIncomeTotal, getUserProfile, HistoryTransaction, UserProfile } from '@/lib/database';
+import { getRecentTransactions, getUserProfile, HistoryTransaction, UserProfile } from '@/lib/database';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import React from 'react';
+import { useTheme } from '@/context/ThemeContext';
 import {
   SafeAreaView,
   ScrollView,
@@ -20,34 +21,61 @@ const Inter_400Regular = require('../../node_modules/@expo-google-fonts/inter/40
 const BG = '#FFFFFF';
 const TEXT_DARK = '#1A1A1A';
 
+type HistoryPeriod = 'today' | 'yesterday' | 'month' | 'customMonth' | 'all';
+
+const PERIOD_LABELS: Record<HistoryPeriod, string> = {
+  today: 'Today',
+  yesterday: 'Yesterday',
+  month: 'This Month',
+  customMonth: 'Custom Month',
+  all: 'All',
+};
+
 export default function HistoryScreen() {
+  const { colors } = useTheme();
+  const scrollRef = React.useRef<ScrollView>(null);
   const [fontsLoaded] = useFonts({ Inter_400Regular });
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
-  const [todayIncome, setTodayIncome] = React.useState(0);
-  const [todayExpense, setTodayExpense] = React.useState(0);
   const [transactions, setTransactions] = React.useState<HistoryTransaction[]>([]);
+  const [period, setPeriod] = React.useState<HistoryPeriod>('today');
+  const [selectedMonth, setSelectedMonth] = React.useState(() => new Date().getMonth());
+  const [selectedYear, setSelectedYear] = React.useState(() => new Date().getFullYear());
+  const [showPeriodPicker, setShowPeriodPicker] = React.useState(false);
 
   const loadData = React.useCallback(() => {
     setProfile(getUserProfile());
-    setTodayIncome(getTodayIncomeTotal());
-    setTodayExpense(getTodayExpenseTotal());
-    setTransactions(getRecentTransactions(20));
+    setTransactions(getRecentTransactions(500));
   }, []);
 
   React.useEffect(() => {
     loadData();
   }, [loadData]);
 
-  useFocusEffect(loadData);
+  useFocusEffect(
+    React.useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      loadData();
+    }, [loadData])
+  );
 
   if (!fontsLoaded) return null;
   const font = 'Inter_400Regular';
   const userName = profile?.name || 'USER';
+  const filteredTransactions = transactions.filter((item) => isInPeriod(item.created_at, period, selectedMonth, selectedYear));
+  const filterLabel = period === 'customMonth'
+    ? new Date(selectedYear, selectedMonth, 1).toLocaleDateString('en-US', { month: 'long' })
+    : PERIOD_LABELS[period];
+  const periodIncome = filteredTransactions
+    .filter((item) => item.type === 'income')
+    .reduce((sum, item) => sum + item.amount, 0);
+  const periodExpense = filteredTransactions
+    .filter((item) => item.type === 'expense')
+    .reduce((sum, item) => sum + item.amount, 0);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
+      <StatusBar barStyle={colors.statusBar} backgroundColor={colors.bg} />
+      <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <DashboardHeader userName={userName} fontFamily={font} />
         <SquirlBanner
           compact
@@ -60,42 +88,104 @@ export default function HistoryScreen() {
         />
 
         <View style={styles.pageHead}>
-          <Text style={[styles.pageTitle, { fontFamily: font }]}>History</Text>
-          <TouchableOpacity style={styles.filterBtn} activeOpacity={0.85}>
-            <Text style={[styles.filterText, { fontFamily: font }]}>Today</Text>
-            <Ionicons name="chevron-down" size={18} color={TEXT_DARK} />
+          <Text style={[styles.pageTitle, { fontFamily: font, color: colors.textPrimary }]}>History</Text>
+          <TouchableOpacity style={[styles.filterBtn, { borderColor: colors.border }]} activeOpacity={0.85} onPress={() => setShowPeriodPicker(true)}>
+            <Text style={[styles.filterText, { fontFamily: font, color: colors.textPrimary }]}>{filterLabel}</Text>
+            <Ionicons name="chevron-down" size={18} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.summaryStrip}>
+        <View style={[styles.summaryStrip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.summaryBlock}>
             <Text style={[styles.summaryLabel, { fontFamily: font }]}>INCOME</Text>
-            <Text style={[styles.summaryValueIn, { fontFamily: font }]}>+PHP {new Intl.NumberFormat('en-PH').format(todayIncome)}</Text>
+            <Text style={[styles.summaryValueIn, { fontFamily: font, color: colors.teal }]}>+PHP {new Intl.NumberFormat('en-PH').format(periodIncome)}</Text>
           </View>
-          <View style={styles.summaryDivider} />
+          <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.summaryBlock}>
             <Text style={[styles.summaryLabel, { fontFamily: font }]}>EXPENSES</Text>
-            <Text style={[styles.summaryValueOut, { fontFamily: font }]}>-PHP {new Intl.NumberFormat('en-PH').format(todayExpense)}</Text>
+            <Text style={[styles.summaryValueOut, { fontFamily: font, color: colors.textPrimary }]}>-PHP {new Intl.NumberFormat('en-PH').format(periodExpense)}</Text>
           </View>
         </View>
 
-        <View style={styles.listCard}>
-          {transactions.map((item, index) => (
-            <View key={`${item.type}-${item.id}-${index}`} style={[styles.historyRow, index !== transactions.length - 1 && styles.historyDivider]}>
+        <View style={[styles.listCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          {filteredTransactions.length === 0 ? (
+            <View style={styles.emptyStateWrap}>
+              <Text style={[styles.emptyStateText, { fontFamily: font, color: colors.textMuted }]}>No transactions for {filterLabel.toLowerCase()}.</Text>
+            </View>
+          ) : filteredTransactions.map((item, index) => (
+            <View key={`${item.type}-${item.id}-${index}`} style={[styles.historyRow, index !== filteredTransactions.length - 1 && styles.historyDivider, { borderBottomColor: colors.border }]}>
               <View style={styles.leftWrap}>
-                <View style={styles.historyIcon} />
+                <View style={[styles.historyIcon, { backgroundColor: colors.bgSecondary }]} />
                 <View>
-                  <Text style={[styles.historyName, { fontFamily: font }]}>{item.name}</Text>
-                  <Text style={[styles.historyMeta, { fontFamily: font }]}>{formatMeta(item)}</Text>
+                  <Text style={[styles.historyName, { fontFamily: font, color: colors.textPrimary }]}>{item.name}</Text>
+                  <Text style={[styles.historyMeta, { fontFamily: font, color: colors.textMuted }]}>{formatMeta(item)}</Text>
                 </View>
               </View>
-              <Text style={[styles.historyAmount, { fontFamily: font }, item.type === 'income' ? styles.amountIn : styles.amountOut]}>
+              <Text style={[styles.historyAmount, { fontFamily: font }, item.type === 'income' ? { color: colors.teal } : { color: colors.textPrimary }]}>
                 {item.type === 'income' ? '+' : '-'} {formatCurrency(item.amount)}
               </Text>
             </View>
           ))}
         </View>
       </ScrollView>
+
+      {showPeriodPicker && (
+        <View style={styles.dropdownWrap}>
+          <View style={[styles.periodCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {(['today', 'yesterday', 'month'] as HistoryPeriod[]).map((item) => {
+              const isActive = period === item;
+              return (
+                <TouchableOpacity
+                  key={item}
+                  style={[styles.periodOption, isActive && { backgroundColor: colors.teal }]}
+                  onPress={() => {
+                    setPeriod(item);
+                    setShowPeriodPicker(false);
+                    scrollRef.current?.scrollTo({ y: 0, animated: false });
+                  }}
+                >
+                  <Text style={[styles.periodOptionText, { fontFamily: font, color: colors.textPrimary }, isActive && { color: '#FFFFFF' }]}>{PERIOD_LABELS[item]}</Text>
+                </TouchableOpacity>
+              );
+            })}
+
+            <View style={[styles.monthDivider, { backgroundColor: colors.border }]} />
+            <Text style={[styles.monthPickerLabel, { fontFamily: font, color: colors.textMuted }]}>Month</Text>
+            <View style={styles.monthGrid}>
+              {Array.from({ length: 12 }).map((_, index) => {
+                const monthLabel = new Date(selectedYear, index, 1).toLocaleDateString('en-US', { month: 'short' });
+                const active = period === 'customMonth' && selectedMonth === index;
+                return (
+                  <TouchableOpacity
+                    key={monthLabel}
+                    style={[styles.monthOption, active && { backgroundColor: colors.teal }]}
+                    onPress={() => {
+                      setSelectedMonth(index);
+                      setSelectedYear(new Date().getFullYear());
+                      setPeriod('customMonth');
+                      setShowPeriodPicker(false);
+                      scrollRef.current?.scrollTo({ y: 0, animated: false });
+                    }}
+                  >
+                    <Text style={[styles.monthOptionText, { fontFamily: font, color: colors.textPrimary }, active && { color: '#FFFFFF' }]}>{monthLabel}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.periodOption, period === 'all' && { backgroundColor: colors.teal }]}
+              onPress={() => {
+                setPeriod('all');
+                setShowPeriodPicker(false);
+                scrollRef.current?.scrollTo({ y: 0, animated: false });
+              }}
+            >
+              <Text style={[styles.periodOptionText, { fontFamily: font, color: colors.textPrimary }, period === 'all' && { color: '#FFFFFF' }]}>All</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -178,10 +268,54 @@ const styles = StyleSheet.create({
   historyAmount: { fontSize: 18, fontWeight: '700' },
   amountIn: { color: '#1A7D65' },
   amountOut: { color: '#1A1A1A' },
+  emptyStateWrap: { paddingVertical: 24, alignItems: 'center' },
+  emptyStateText: { fontSize: 14, color: '#687068' },
+  dropdownWrap: { position: 'absolute', top: 272, right: 14, zIndex: 20 },
+  periodCard: {
+    width: 184,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#C6CBC6',
+    padding: 6,
+  },
+  periodOption: { borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
+  periodOptionActive: { backgroundColor: '#207A67' },
+  periodOptionText: { fontSize: 15, color: TEXT_DARK, fontWeight: '700' },
+  periodOptionTextActive: { color: '#FFFFFF' },
+  monthDivider: { height: 1, backgroundColor: '#E1E4E1', marginVertical: 6 },
+  monthPickerLabel: { fontSize: 12, color: '#687068', fontWeight: '700', marginHorizontal: 8, marginBottom: 6 },
+  monthGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 6 },
+  monthOption: { width: 38, borderRadius: 8, paddingVertical: 7, alignItems: 'center' },
+  monthOptionText: { fontSize: 12, color: TEXT_DARK, fontWeight: '700' },
 });
 const formatCurrency = (amount: number) => `₱ ${new Intl.NumberFormat('en-PH').format(amount)}`;
 const formatMeta = (item: HistoryTransaction) => {
   const date = new Date(item.created_at);
   const dateLabel = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
   return `${item.meta} · ${dateLabel}`;
+};
+
+const isInPeriod = (dateIso: string, period: HistoryPeriod, selectedMonth: number, selectedYear: number) => {
+  if (period === 'all') return true;
+
+  const date = new Date(dateIso);
+  const now = new Date();
+
+  if (period === 'month') {
+    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  }
+
+  if (period === 'customMonth') {
+    return date.getFullYear() === selectedYear && date.getMonth() === selectedMonth;
+  }
+
+  const target = new Date(now);
+  if (period === 'yesterday') target.setDate(now.getDate() - 1);
+
+  return (
+    date.getFullYear() === target.getFullYear() &&
+    date.getMonth() === target.getMonth() &&
+    date.getDate() === target.getDate()
+  );
 };
