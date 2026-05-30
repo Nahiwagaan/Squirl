@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.vader.squirl",
       "adaptiveIcon": {
         "backgroundColor": "#8F942D",
         "foregroundImage": "./assets/images/logo.png",
@@ -37,11 +38,18 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1a0ab7e7-539b-464a-bcc4-2f4bb4872c4b"
+      }
     }
   }
 }
