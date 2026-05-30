@@ -254,6 +254,20 @@ export function getTodayIncomeTotal(): number {
     .reduce((sum, entry) => sum + entry.amount, 0);
 }
 
+export function getMonthIncomeTotal(): number {
+  const entries = readIncomeEntries();
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+
+  return entries
+    .filter((entry) => {
+      const date = new Date(entry.created_at);
+      return date.getFullYear() === year && date.getMonth() === month;
+    })
+    .reduce((sum, entry) => sum + entry.amount, 0);
+}
+
 export function saveExpenseEntry(
   amount: number,
   note: string,
@@ -294,6 +308,20 @@ export function getTodayExpenseTotal(): number {
         date.getMonth() === month &&
         date.getDate() === day
       );
+    })
+    .reduce((sum, entry) => sum + entry.amount, 0);
+}
+
+export function getMonthExpenseTotal(): number {
+  const entries = readExpenseEntries();
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+
+  return entries
+    .filter((entry) => {
+      const date = new Date(entry.created_at);
+      return date.getFullYear() === year && date.getMonth() === month;
     })
     .reduce((sum, entry) => sum + entry.amount, 0);
 }

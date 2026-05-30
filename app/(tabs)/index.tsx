@@ -1,7 +1,7 @@
 import { DashboardHeader } from '@/components/dashboard-header';
 import { SquirlBanner } from '@/components/squirl-banner';
 import { useTheme } from '@/context/ThemeContext';
-import { CashflowMonth, deleteExpenseEntry, deleteIncomeEntry, getBills, getCashflowLast6Months, getRecentTransactions, getSavingsGoals, getTodayExpenseTotal, getTodayIncomeTotal, getUserProfile, HistoryTransaction, saveSalaryProfile, UserProfile, updateSavingsGoalVisibility } from '@/lib/database';
+import { CashflowMonth, deleteExpenseEntry, deleteIncomeEntry, getBills, getCashflowLast6Months, getMonthExpenseTotal, getMonthIncomeTotal, getRecentTransactions, getSavingsGoals, getTodayExpenseTotal, getTodayIncomeTotal, getUserProfile, HistoryTransaction, saveSalaryProfile, UserProfile, updateSavingsGoalVisibility } from '@/lib/database';
 import { pickBillLogo } from '@/constants/bills';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerAndroid, DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -58,8 +58,8 @@ export default function HomeDashboard() {
   const scrollRef = useRef<ScrollView>(null);
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [todayIncomeTotal, setTodayIncomeTotal] = useState(0);
-  const [todayExpenseTotal, setTodayExpenseTotal] = useState(0);
+  const [monthIncomeTotal, setMonthIncomeTotal] = useState(0);
+  const [monthExpenseTotal, setMonthExpenseTotal] = useState(0);
   const [cashflowMonths, setCashflowMonths] = useState<CashflowMonth[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<HistoryTransaction[]>([]);
   const [savedGoals, setSavedGoals] = useState<HomeGoalItem[]>([]);
@@ -91,8 +91,8 @@ export default function HomeDashboard() {
 
   useEffect(() => {
     setProfile(getUserProfile());
-    setTodayIncomeTotal(getTodayIncomeTotal());
-    setTodayExpenseTotal(getTodayExpenseTotal());
+    setMonthIncomeTotal(getMonthIncomeTotal());
+    setMonthExpenseTotal(getMonthExpenseTotal());
     setCashflowMonths(getCashflowLast6Months());
     setRecentTransactions(getRecentTransactions(5));
     try { setSavedGoals(getSavingsGoals().map((g) => ({ id: g.id, name: g.name, targetTotal: g.target_total, savedTotal: g.saved_total, remainingToGo: g.remaining_to_go, progress: g.progress, is_hidden: g.is_hidden }))); } catch { }
@@ -104,8 +104,8 @@ export default function HomeDashboard() {
       setFocusCount(prev => prev + 1);
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       setProfile(getUserProfile());
-      setTodayIncomeTotal(getTodayIncomeTotal());
-      setTodayExpenseTotal(getTodayExpenseTotal());
+      setMonthIncomeTotal(getMonthIncomeTotal());
+      setMonthExpenseTotal(getMonthExpenseTotal());
       setCashflowMonths(getCashflowLast6Months());
       setRecentTransactions(getRecentTransactions(5));
       try { setSavedGoals(getSavingsGoals().map((g) => ({ id: g.id, name: g.name, targetTotal: g.target_total, savedTotal: g.saved_total, remainingToGo: g.remaining_to_go, progress: g.progress, is_hidden: g.is_hidden }))); } catch { }
@@ -291,7 +291,7 @@ export default function HomeDashboard() {
 
   // Use a stable pseudo-random seed to avoid flickering messages on scroll/re-renders
   // Incorporate focusCount so the default greeting changes each time they visit the Home tab
-  const seed = isLatestToday && latestTx ? latestTx.id : Math.floor(todayExpenseTotal) + focusCount;
+  const seed = isLatestToday && latestTx ? latestTx.id : Math.floor(monthExpenseTotal) + focusCount;
   const pickRandom = (arr: string[]) => arr[seed % arr.length];
 
   let bannerMessage = pickRandom([
@@ -348,11 +348,11 @@ export default function HomeDashboard() {
         bannerMascot = require('@/assets/images/squirl/Happy.png');
       }
     }
-  } else if (todayExpenseTotal > 5000) {
+  } else if (monthExpenseTotal > 5000) {
     bannerMessage = pickRandom([
-      `Whoa {name}, you've spent quite a bit today (₱${new Intl.NumberFormat('en-PH').format(todayExpenseTotal)})! Let's make sure we're sticking to the budget.`,
-      `{name}, you're burning through cash today! Time to hide the credit cards? 🏃‍♂️💳`,
-      `I'm looking at today's total and getting a little dizzy, {name}. 😵‍💫 Let's slow down the spending!`
+      `Whoa {name}, you've spent quite a bit this month (₱${new Intl.NumberFormat('en-PH').format(monthExpenseTotal)})! Let's make sure we're sticking to the budget.`,
+      `{name}, you're burning through cash this month! Time to hide the credit cards? 🏃‍♂️💳`,
+      `I'm looking at this month's total and getting a little dizzy, {name}. 😵‍💫 Let's slow down the spending!`
     ]);
     bannerMascot = require('@/assets/images/squirl/Sad.png');
   } else if (cashflowMonths.length > 0) {
@@ -439,7 +439,7 @@ export default function HomeDashboard() {
                   <Text style={[styles.monthTagText, { fontFamily: font, color: colors.textMuted }]}>OUT</Text>
                 </View>
               </View>
-              <Text style={[styles.monthAmountOut, { fontFamily: 'Inter_400Regular', color: colors.textPrimary }]}>{formatPesoCents(todayExpenseTotal)}</Text>
+              <Text style={[styles.monthAmountOut, { fontFamily: 'Inter_400Regular', color: colors.textPrimary }]}>{formatPesoCents(monthExpenseTotal)}</Text>
               <Text style={[styles.monthSubText, { fontFamily: font, color: colors.textMuted }]}>Logged spending in the current month</Text>
             </View>
 
@@ -450,7 +450,7 @@ export default function HomeDashboard() {
                   <Text style={[styles.monthTagText, { fontFamily: font, color: colors.textMuted }]}>IN</Text>
                 </View>
               </View>
-              <Text style={[styles.monthAmountIn, { fontFamily: 'Inter_400Regular', color: '#1a6b3a' }]}>{formatPesoCents(todayIncomeTotal)}</Text>
+              <Text style={[styles.monthAmountIn, { fontFamily: 'Inter_400Regular', color: '#1a6b3a' }]}>{formatPesoCents(monthIncomeTotal)}</Text>
               <Text style={[styles.monthSubText, { fontFamily: font, color: colors.textMuted }]}>Logged income in the current month</Text>
             </View>
           </View>
@@ -669,8 +669,8 @@ export default function HomeDashboard() {
                                 if (item.type === 'expense') deleteExpenseEntry(item.id);
                                 else deleteIncomeEntry(item.id);
                                 setRecentTransactions(getRecentTransactions(5));
-                                setTodayIncomeTotal(getTodayIncomeTotal());
-                                setTodayExpenseTotal(getTodayExpenseTotal());
+                                setMonthIncomeTotal(getMonthIncomeTotal());
+                                setMonthExpenseTotal(getMonthExpenseTotal());
                                 setCashflowMonths(getCashflowLast6Months());
                               }
                             } else {
@@ -686,8 +686,8 @@ export default function HomeDashboard() {
                                       if (item.type === 'expense') deleteExpenseEntry(item.id);
                                       else deleteIncomeEntry(item.id);
                                       setRecentTransactions(getRecentTransactions(5));
-                                      setTodayIncomeTotal(getTodayIncomeTotal());
-                                      setTodayExpenseTotal(getTodayExpenseTotal());
+                                      setMonthIncomeTotal(getMonthIncomeTotal());
+                                      setMonthExpenseTotal(getMonthExpenseTotal());
                                       setCashflowMonths(getCashflowLast6Months());
                                     }
                                   }

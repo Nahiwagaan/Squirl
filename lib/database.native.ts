@@ -251,6 +251,19 @@ export function getTodayIncomeTotal(): number {
   return row?.total ?? 0;
 }
 
+export function getMonthIncomeTotal(): number {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  const end = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
+  const row = db.getFirstSync<{ total: number | null }>(
+    'SELECT COALESCE(SUM(amount), 0) as total FROM income_entries WHERE created_at >= ? AND created_at < ?',
+    [start.toISOString(), end.toISOString()]
+  );
+
+  return row?.total ?? 0;
+}
+
 export function saveExpenseEntry(
   amount: number,
   note: string,
@@ -271,6 +284,19 @@ export function getTodayExpenseTotal(): number {
   const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+  const row = db.getFirstSync<{ total: number | null }>(
+    'SELECT COALESCE(SUM(amount), 0) as total FROM expense_entries WHERE created_at >= ? AND created_at < ?',
+    [start.toISOString(), end.toISOString()]
+  );
+
+  return row?.total ?? 0;
+}
+
+export function getMonthExpenseTotal(): number {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  const end = new Date(today.getFullYear(), today.getMonth() + 1, 1);
 
   const row = db.getFirstSync<{ total: number | null }>(
     'SELECT COALESCE(SUM(amount), 0) as total FROM expense_entries WHERE created_at >= ? AND created_at < ?',
