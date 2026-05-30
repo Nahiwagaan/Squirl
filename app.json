@@ -1,13 +1,13 @@
 {
   "expo": {
     "name": "Squirl",
-    "slug": "Squirl",
+    "slug": "squirl",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "squirl",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -39,7 +39,8 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -48,8 +49,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "1a0ab7e7-539b-464a-bcc4-2f4bb4872c4b"
+        "projectId": "3d0576ca-4ab4-41b8-a6db-0530c7616e40"
       }
-    }
+    },
+    "owner": "vadeers-organization"
   }
 }
