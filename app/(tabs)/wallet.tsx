@@ -21,6 +21,7 @@ import {
   Alert,
   TextInput,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 
 const Inter_400Regular = require('../../node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf');
@@ -324,50 +325,54 @@ export default function WalletScreen() {
 
       {/* Add Account Modal */}
       <Modal visible={showAddModal} animationType="slide" transparent>
-        <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
-          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
-            {/* Handle bar */}
-            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
+            <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
+              {/* Handle bar */}
+              <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
 
-            {isAddingCustom ? (
-              <>
-                <View style={styles.sheetHeader}>
-                  <View>
-                    <Text style={[styles.sheetTitle, { fontFamily: font, color: colors.textPrimary }]}>Add Custom Account</Text>
-                    <Text style={[styles.sheetSubtitle, { fontFamily: font, color: colors.textMuted }]}>Enter the name of your account</Text>
+              {isAddingCustom ? (
+                <>
+                  <View style={styles.sheetHeader}>
+                    <View>
+                      <Text style={[styles.sheetTitle, { fontFamily: font, color: colors.textPrimary }]}>Add Custom Account</Text>
+                      <Text style={[styles.sheetSubtitle, { fontFamily: font, color: colors.textMuted }]}>Enter the name of your account</Text>
+                    </View>
+                    <TouchableOpacity onPress={closeAddModal} style={[styles.closeBtn, { backgroundColor: colors.bgSecondary }]}>
+                      <Ionicons name="close" size={20} color={colors.textPrimary} />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity onPress={closeAddModal} style={[styles.closeBtn, { backgroundColor: colors.bgSecondary }]}>
-                    <Ionicons name="close" size={20} color={colors.textPrimary} />
+
+                  <Text style={[styles.editLabel, { fontFamily: font, color: colors.textPrimary }]}>ACCOUNT NAME</Text>
+                  <TextInput
+                    style={[styles.editInput, { fontFamily: font, color: colors.textPrimary, borderColor: colors.inputBorder }]}
+                    value={customAccountName}
+                    onChangeText={setCustomAccountName}
+                    placeholder="e.g. My Savings"
+                    placeholderTextColor={colors.textMuted}
+                    autoFocus
+                  />
+
+                  <TouchableOpacity 
+                    style={[styles.saveBtn, { marginBottom: 10, backgroundColor: colors.tealBg }]} 
+                    onPress={() => {
+                      if (customAccountName.trim()) {
+                        handleAddAccount(customAccountName);
+                      }
+                    }} 
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.saveBtnText, { fontFamily: font }]}>Add Account</Text>
                   </TouchableOpacity>
-                </View>
-
-                <Text style={[styles.editLabel, { fontFamily: font, color: colors.textPrimary }]}>ACCOUNT NAME</Text>
-                <TextInput
-                  style={[styles.editInput, { fontFamily: font, color: colors.textPrimary, borderColor: colors.inputBorder }]}
-                  value={customAccountName}
-                  onChangeText={setCustomAccountName}
-                  placeholder="e.g. My Savings"
-                  placeholderTextColor={colors.textMuted}
-                  autoFocus
-                />
-
-                <TouchableOpacity 
-                  style={[styles.saveBtn, { marginBottom: 10, backgroundColor: colors.tealBg }]} 
-                  onPress={() => {
-                    if (customAccountName.trim()) {
-                      handleAddAccount(customAccountName);
-                    }
-                  }} 
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.saveBtnText, { fontFamily: font }]}>Add Account</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.deleteBtn} onPress={() => setIsAddingCustom(false)} activeOpacity={0.85}>
-                  <Text style={[styles.deleteBtnText, { fontFamily: font, color: colors.textMuted }]}>Back to List</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
+                  
+                  <TouchableOpacity style={styles.deleteBtn} onPress={() => setIsAddingCustom(false)} activeOpacity={0.85}>
+                    <Text style={[styles.deleteBtnText, { fontFamily: font, color: colors.textMuted }]}>Back to List</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
               <>
                 <View style={styles.sheetHeader}>
                   <View>
@@ -421,8 +426,9 @@ export default function WalletScreen() {
                 />
               </>
             )}
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
