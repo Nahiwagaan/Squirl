@@ -8,7 +8,7 @@
 
 You can download the latest **Android APK** directly from the link below:
 
-### [📥 Download Squirl v1.0.0 (APK)](https://wf-artifacts.eascdn.net/builds/internal-st/3d0576ca-4ab4-41b8-a6db-0530c7616e40/e8cc731c-60ba-46a9-94a5-83e459a33322/019e788c-1392-74bf-9462-cf0fdfd033b6/application-e8cc731c-60ba-46a9-94a5-83e459a33322.apk?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=75d871a1a44e598975dd84fa2341c9b0%2F20260530%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260530T121013Z&X-Amz-Expires=900&X-Amz-Signature=5910b3ce361c5cba9774bf3c1fabcfbccea1c833eb6edeac3be60d411957766d&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+### [📥 Download Squirl v1.0.0 (APK)](https://wf-artifacts.eascdn.net/builds/internal-st/3d0576ca-4ab4-41b8-a6db-0530c7616e40/1c44123c-31b9-41a3-80a3-f9009b81c0fd/019e7b55-b575-70a9-ab67-83921bf15da2/application-1c44123c-31b9-41a3-80a3-f9009b81c0fd.apk?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=75d871a1a44e598975dd84fa2341c9b0%2F20260531%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260531T000225Z&X-Amz-Expires=900&X-Amz-Signature=0966dab017db6134347e0d69315f1456761dee615968c0abf0807ee4e4826881&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
 
 > **Note for Installation:** Since this is a custom-built app, Android might show a "Play Protect" warning. Simply click **"Install Anyway"** to proceed with the installation.
 
@@ -40,57 +40,13 @@ You can download the latest **Android APK** directly from the link below:
 
 ---
 
-## 📁 Project Structure
-
-```
-app/
-├── (tabs)/          # Tab screens: Home, Wallet, Plan, History, Debts, Settings
-├── index.tsx        # Onboarding / setup flow
-├── income.tsx       # Add income screen
-├── expense.tsx      # Add expense screen
-├── transfer.tsx     # Add transfer screen
-├── chat.tsx         # Chat screen
-└── _layout.tsx      # Root layout & navigation
-
-components/          # Shared UI components (headers, banners, etc.)
-lib/                 # Data storage layer (SQLite + web fallback)
-assets/images/       # Logos, mascots, bank icons, and bill images
-```
-
----
-
 ## 🧹 Data Management
 
 You can reset all app data at any time via the **Settings** page. This is useful for a fresh start or testing purposes. Use with caution — this action is irreversible.
 
 ---
 
-## 🛠️ Run Locally
+## 📝 Changelog
 
-1. Install dependencies
-
-```bash
-npm install
-```
-
-2. Start the development server
-
-```bash
-npx expo start
-```
-
-3. Open on your device, emulator, or browser from the Expo CLI options.
-
-### Available Scripts
-
-| Command | Description |
-|---|---|
-| `npm run start` | Start Expo dev server |
-| `npm run android` | Launch on Android |
-| `npm run ios` | Launch on iOS |
-| `npm run web` | Launch in browser |
-| `npm run lint` | Run lint checks |
-
----
-
-*Made with ❤️ for personal use.*
+### 2026-05-31
+- **Fix: "This Month In / Out" now shows the correct monthly totals**
