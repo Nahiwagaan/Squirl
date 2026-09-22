@@ -393,7 +393,29 @@ export default function HomeDashboard() {
           message={bannerMessage}
         />
 
+        {/* Quick-log Expense Card */}
+        <TouchableOpacity
+          id="quick-log-expense-btn"
+          style={styles.quickLogCard}
+          activeOpacity={0.82}
+          onPress={() => router.push('/expense')}
+        >
+          <View style={styles.quickLogLeft}>
+            <View style={styles.quickLogIconWrap}>
+              <Text style={styles.quickLogIconText}>₱</Text>
+            </View>
+            <View style={styles.quickLogTextWrap}>
+              <Text style={[styles.quickLogTitle, { fontFamily: fontBold }]}>Log Expense</Text>
+              <Text style={[styles.quickLogSub, { fontFamily: font }]}>Tap to record a new expense</Text>
+            </View>
+          </View>
+          <View style={styles.quickLogPlusWrap}>
+            <Ionicons name="add" size={22} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
+
         {/* Summary Cards */}
+
         <View style={styles.row}>
           {/* Expense Distribution */}
           <View style={[styles.card, { flex: 1, marginRight: 6, backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
@@ -643,22 +665,25 @@ export default function HomeDashboard() {
               <View key={dateTitle} style={styles.dateGroup}>
                 <Text style={[styles.dateHeader, { fontFamily: 'Inter_400Regular', color: colors.textPrimary }]}>{dateTitle}</Text>
                 {groupedTransactions[dateTitle].map((item, idx) => (
-                  <LinearGradient
+                  <View
                     key={`${item.type}-${item.id}-${idx}`}
-                    colors={item.type === 'income' ? ['#4EAA93', '#F2F9F7'] : ['#F27D7D', '#FFF5F5']}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={[styles.txPill, { borderColor: item.type === 'income' ? '#4EAA93' : '#F27D7D' }]}
+                    style={[
+                      styles.txPill,
+                      {
+                        backgroundColor: item.type === 'income' ? '#F5F5F5' : '#FFFFFF',
+                        borderColor: '#E0E0E0',
+                      },
+                    ]}
                   >
                     <View style={styles.txLeft}>
                       <Text style={[styles.txName, { fontFamily: 'Inter_400Regular', color: '#1A1A1A' }]}>{item.name}</Text>
-                      <Text style={[styles.txTime, { fontFamily: 'Inter_400Regular', color: '#1A1A1A' }]}>
+                      <Text style={[styles.txTime, { fontFamily: 'Inter_400Regular', color: '#888888' }]}>
                         {new Date(item.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                       </Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text style={[styles.txAmount, { fontFamily: 'Inter_400Regular' }, item.type === 'income' ? styles.amountInText : styles.amountOutText]}>
-                        ₱ {new Intl.NumberFormat('en-PH').format(item.amount)}
+                        {item.type === 'expense' ? '- ' : ''}₱ {new Intl.NumberFormat('en-PH').format(item.amount)}
                       </Text>
                       {dateTitle === 'Today' && (
                         <TouchableOpacity
@@ -696,11 +721,11 @@ export default function HomeDashboard() {
                             }
                           }}
                         >
-                          <Ionicons name="reload-outline" size={20} color={item.type === 'income' ? '#1F6F5F' : '#B70D19'} style={{ transform: [{ scaleX: -1 }] }} />
+                          <Ionicons name="reload-outline" size={20} color="#999999" style={{ transform: [{ scaleX: -1 }] }} />
                         </TouchableOpacity>
                       )}
                     </View>
-                  </LinearGradient>
+                  </View>
                 ))}
               </View>
             ))}
@@ -1193,8 +1218,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  amountInText: { color: '#1F6F5F' },
-  amountOutText: { color: '#B70D19' },
+  amountInText: { color: '#1A1A1A' },
+  amountOutText: { color: '#1A1A1A' },
   /* Goals Section */
   goalSection: {
     marginBottom: 16,
@@ -1457,5 +1482,63 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+
+  /* Quick-Log Expense Card */
+  quickLogCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#C30F1A',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: '#C30F1A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  quickLogLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  quickLogIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  quickLogIconText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  quickLogTextWrap: {
+    flex: 1,
+  },
+  quickLogTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  quickLogSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
+  },
+  quickLogPlusWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
   },
 });
