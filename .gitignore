@@ -41,3 +41,11 @@ app-example
 # generated native folders
 /ios
 # /android (tracked for custom native widget and quick tile)
+
+# Android build outputs & local cache
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
