@@ -15,6 +15,11 @@
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
+    <service android:name=".ExpenseQuickTile" android:exported="true" android:label="Log Expense" android:icon="@mipmap/ic_launcher" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE"/>
+      </intent-filter>
+    </service>
     <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
@@ -28,31 +33,11 @@
         <data android:scheme="exp+squirl"/>
       </intent-filter>
     </activity>
-
-    <!-- Expense quick-log home screen widget -->
-    <receiver
-      android:name=".ExpenseWidget"
-      android:exported="true"
-      android:label="Squirl – Log Expense">
+    <receiver android:name=".ExpenseWidget" android:exported="true" android:label="Squirl – Log Expense">
       <intent-filter>
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
       </intent-filter>
-      <meta-data
-        android:name="android.appwidget.provider"
-        android:resource="@xml/expense_widget_info" />
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/expense_widget_info"/>
     </receiver>
-
-    <!-- Quick Settings tile — swipe down notification shade to access -->
-    <service
-      android:name=".ExpenseQuickTile"
-      android:exported="true"
-      android:label="Log Expense"
-      android:icon="@mipmap/ic_launcher"
-      android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-      <intent-filter>
-        <action android:name="android.service.quicksettings.action.QS_TILE" />
-      </intent-filter>
-    </service>
-
   </application>
 </manifest>
