@@ -1,9 +1,7 @@
 package com.vader.squirl
 
-import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.service.quicksettings.TileService
 import android.service.quicksettings.Tile
 
@@ -38,19 +36,7 @@ class ExpenseQuickTile : TileService() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            // Android 14+ requires startActivityAndCollapse with PendingIntent
-            val pendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                launchIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            startActivityAndCollapse(pendingIntent)
-        } else {
-            // Android 7–13: collapse the shade then launch
-            @Suppress("DEPRECATION")
-            startActivityAndCollapse(launchIntent)
-        }
+        @Suppress("DEPRECATION")
+        startActivityAndCollapse(launchIntent)
     }
 }
